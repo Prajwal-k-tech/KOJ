@@ -226,6 +226,8 @@ Role decision finalized: **Option B — dedicated `contest_setter` role**. `user
 - **Observability**: Admin dashboard metrics (`GET /api/admin/metrics`), judge `/health` & `/metrics` endpoints, and structured JSON logs.
 - **Database Migrations**: Idempotent migration `0002_confused_boomerang.sql` adding `invite_code`, unique `email`, and 2000ms default time limit.
 - **Contestant Experience**: Submissions archive page (`/submissions`), personal dashboard progress stats (`/dashboard`), Monaco code editor starters, copyable test cases, and ICPC scoring with penalty calculation.
+- **Codeforces Interactive Workspace**: `POST /api/judge/run` interactive test runner with arbitrary `stdin` execution (64KB input limit, 100KB code limit, 2.5s cooldown rate limiter, non-persisted), sample testcase diff runner with runtime/memory metrics, in-workspace submission history drawer with live SSE verdict streaming, and CP fast I/O starter templates with reset/copy controls.
+- **DOMjudge ICPC Scoreboard**: 12-color balloon palette attached to problems, first-to-solve (first blood) gold star `★` badges with dark green cell highlights, 60-minute scoreboard freeze window with pending `?` masking, problem summary metrics footer (solves, attempts, acceptance rate), and instant contestant search filter.
 - **Documentation**: Comprehensive guides for contestants (`docs/user-guide.md`), problem setters (`docs/problem-setter-guide.md`), and deployment (`docs/deployment.md`).
 
 ---
