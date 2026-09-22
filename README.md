@@ -118,3 +118,9 @@ Then <http://127.0.0.1:8000/health> and <http://127.0.0.1:8000/docs>.
 - **Frontend**: Vercel (Next.js 16). See `docs/deployment.md` § 2.
 - **Judge**: Google Cloud Run (`api/Dockerfile` — Python 3.11-slim + gcc/g++/JDK). See `docs/deployment.md` § 3.
 - **Database**: Neon Postgres with Drizzle ORM. See `docs/deployment.md` § 1.
+
+## Contributors
+
+- Prajwal-k-tech
+- CyberSynthh
+- Pannem Chandra Teja
