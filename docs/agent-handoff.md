@@ -16,7 +16,7 @@ Continuing development in this repo? Read this first, then ask the user for the 
 - Database is fully migrated (email unique, `case_results`, 6 perf indexes — applied and verified live).
 - Redis is optional: code runs DB-only when `REDIS_URL` is unset; no Upstash instance exists yet.
 - Latest closeout diff: contest editorial hiding in `app/api/problems/[id]/route.ts`; arena solved/attempts badges in `app/contests/[id]/arena/page.tsx`.
-- Validation before push: `npx tsc --noEmit`, `npm run lint`, `npm run build`. No test runner is installed; do not leave test files behind (see `AGENTS.md` rule 5).
+- Validation before push: `npx tsc --noEmit`, `npm run lint`, `npm test` (runs all TS unit suites + pytest). See `docs/testing.md` for suite locations.
 
 ## Ask the user for these before continuing
 
