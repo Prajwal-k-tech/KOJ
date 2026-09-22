@@ -216,6 +216,8 @@ Explicitly not implemented on this branch:
 
 Role decision finalized: **Option B — dedicated `contest_setter` role**. `user_role` enum on live Neon is `contestant | problem_setter | contest_setter | admin`. Contest APIs are gated on `requireContestManager()` (Clerk `org:admin`, `org:contest_setter`, or DB `admin`/`contest_setter`). Problem APIs are setter-gated; user/role management is admin-only (BR-03).
 
+**2026-09-23 update — roles merged:** `problem_setter` + `contest_setter` collapsed into a single `setter` (`contestant | setter | admin` on Neon, `db/migrations/0005_setter_merge.sql`). Both gates (`requireSetter`, `requireContestManager`) now admit `admin | setter`; setters see both problem and contest sections in `/admin`. Admin-only stays: users/roles, all-submissions moderation, metrics, problem hard-delete.
+
 ### Key Features Completed:
 - **Contest Management**: Full CRUD (`/api/admin/contests`), legal transitions (`draft` → `live` → `ended` → `archived`), auto-settle expired contests, invite code support (`invite_code`), and `/admin` management interface.
 - **Problem Management**: Full CRUD (`/api/admin/problems/[id]`), test case management (10MB limit, 100 cases max, sample/hidden toggle), live contest locking (`BR-08`).
