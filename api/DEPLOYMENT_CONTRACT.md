@@ -3,8 +3,9 @@
 Scope: the FastAPI judge service in `api/` plus migration
 `0003_judge_hardening.sql`. Parent (Next.js `app/`, contests, UX)
 owns dispatch wiring, recovery, and verdict display — open items are
-listed at the bottom. Do not deploy judging on a host that cannot meet
-this contract; the judge fails closed instead.
+listed at the bottom. A host that cannot run containers must run the
+rlimit backend instead (see §1a); the judge never silently executes
+unsandboxed.
 
 ## 1. Host
 
@@ -13,11 +14,41 @@ this contract; the judge fails closed instead.
   `docker info`, `docker run --rm hello-world`,
   `cat /sys/fs/cgroup/cgroup.controllers` (v2) shows `memory pids cpu`.
 - The service runs as a container or systemd unit **with access to the
-  Docker socket or TCP daemon** (see §3). The judge host is NOT
-  serverless: **no Cloud Run standard service** (no Docker daemon,
-  no `--privileged`, no sibling containers). Use a VM (GCE e2-medium
-  or larger), GCE Container-Optimized OS, or equivalent. Cloud Run is
-  acceptable only for the Next.js frontend, never for `api/`.
+  Docker socket or TCP daemon** (see §3). A serverless host (Cloud Run,
+  no Docker daemon, no `--privileged`, no sibling containers) cannot
+  satisfy §1 — use a VM (GCE e2-medium or larger), GCE
+  Container-Optimized OS, or equivalent, **or** run the rlimit backend
+  described in §1a.
+
+## 1a. Sandbox backend selection (`JUDGE_SANDBOX_MODE`)
+
+`api/app/judge.py` implements two backends:
+
+| Mode | Behaviour |
+|---|---|
+| `docker` (default when a Docker CLI is present) | Everything in this document. Isolation via container namespaces, seccomp, cgroups. |
+| `rlimit` | Host toolchain with `RLIMIT_CPU/AS/NPROC/FSIZE`, wall-clock timeout, and a fresh process session per run. This is the isolation level SRS §2.5 constraint 3 sanctions. No filesystem or network namespace. |
+| `auto` (code default) | `docker` when the Docker CLI exists, otherwise `rlimit`. |
+
+**Production currently runs `auto` on Cloud Run, i.e. `rlimit`.** `GET /health` reports
+the active backend as `sandbox`; alert on it. rlimit-specific properties you must not
+forget when changing judge code:
+
+- `RLIMIT_NPROC` counts every task of the real UID (threads included). It must be derived
+  from the host's live task count (`/proc/loadavg` field 4) plus headroom, or `g++`/`javac`
+  fail with `posix_spawn: Resource temporarily unavailable`.
+- `RLIMIT_AS` cannot be used for the JVM, the Go arena, or V8 — those runtimes reserve far
+  more virtual address space than they touch. Java is bounded by `-Xmx`, Go by `GOMEMLIMIT`,
+  Node by `--max-old-space-size`, all derived from the problem's memory limit.
+- `RLIMIT_FSIZE` applies to the **run** phase only. Applying it while compiling makes
+  linkers (e.g. rustc) fail on binaries larger than the bound and surfaces as a bogus
+  compilation error.
+- Compiling with a missing toolchain is infrastructure failure
+  (`SandboxUnavailable` → infra-flagged `runtime_error`), never a contestant CE. Each
+  language declares its required binaries in `_LOCAL_TOOLCHAIN`.
+- Go needs a writable `GOCACHE`; it is shared process-wide
+  (`tempfile.gettempdir()/koj-go-build-cache`) and warmed in a background thread at start-up,
+  otherwise every submission recompiles the standard library (10s+ each).
 - Kernel with seccomp enforcement (`CONFIG_SECCOMP`, `CONFIG_SECCOMP_FILTER`).
   Verify: `grep -i seccomp /boot/config-$(uname -r)`.
 - Single uvicorn worker (`--workers 1`, see `api/Dockerfile`).
@@ -92,7 +123,8 @@ this contract; the judge fails closed instead.
 
 - Pre-pull (or override consistently in env + contract):
   ```bash
-  docker pull python:3.11-slim gcc:13-bookworm eclipse-temurin:17-jdk-jammy
+  docker pull python:3.11-slim gcc:13-bookworm eclipse-temurin:17-jdk-jammy \
+              golang:1.22-bookworm rust:1.79-bookworm node:20-bookworm-slim
   ```
 - Judge runs with `--pull never`: deployments never pull at judge time
   (no registry-in-the-loop, no tag mutation mid-contest). Pin digests in
@@ -198,7 +230,17 @@ this contract; the judge fails closed instead.
 ## 11. Limitations (must not be presented as passes)
 
 - No Docker-capable Linux host was available in this environment; the
-  matrix above is unrunnable here and must run before contest use.
+  Docker-mode matrix above is unrunnable here and must run before contest
+  use. The rlimit backend (production) **is** verified per language — see
+  `E2E-VERIFICATION.md` in the handoff pack.
+- rlimit mode provides no filesystem or network namespace: contestant code
+  sees the service user's filesystem and can reach the network. Accepted
+  under SRS §2.5 constraint 3 for a trusted user base; the Docker backend is
+  the hardened path.
+- rlimit memory accounting is `RLIMIT_AS` for C/C++/Python and a runtime flag
+  for Java/Go/Node, so a container-level (cgroup) memory kill does not apply.
+  Go/Node programs that exceed the limit are more likely to be reported as a
+  runtime error than MLE.
 - Timing is wall-clock (`elapsed_ms` vs `time_limit_ms`) with +2s daemon
   headroom: variance under load is expected; strict CPU accounting is
   future work.
