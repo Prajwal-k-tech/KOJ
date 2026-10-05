@@ -125,8 +125,7 @@ provisioning, and evidence matrix: `api/DEPLOYMENT_CONTRACT.md`.
 The Docker host must have the daemon running, the seccomp profile
 provisioned, and all three images pre-pulled (`docker pull
 python:3.11-slim gcc:13-bookworm eclipse-temurin:17-jdk-jammy`, or
-your configured overrides). Without Docker, every judgment returns an
-infra-flagged error (`judge sandbox unavailable`) only when
-`JUDGE_SANDBOX_MODE=docker`. With `auto`, a missing Docker daemon selects
-`rlimit`; that fallback is not a security sandbox. Standard Cloud Run cannot
-run the Docker-per-case design directly.
+your configured overrides). With `auto` or `docker`, an unavailable Docker
+daemon returns an infra-flagged error (`judge sandbox unavailable`); it
+never falls back to host execution. Standard Cloud Run cannot run the
+Docker-per-case design directly.

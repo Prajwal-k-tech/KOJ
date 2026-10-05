@@ -117,7 +117,7 @@ Then <http://127.0.0.1:8000/health> and <http://127.0.0.1:8000/docs>.
 
 - **Frontend**: Vercel (Next.js 16). See `docs/deployment.md`.
 - **Database**: Neon Postgres with Drizzle ORM.
-- **Judge**: the API supports Docker and host-level `rlimit` backends. `auto` falls back to `rlimit` when Docker is unavailable; `rlimit` does not isolate filesystem or network access. Do not expose it to untrusted public submissions. Public judging requires a Docker-capable isolated worker or equivalent. See `api/DEPLOYMENT_CONTRACT.md`.
+- **Judge**: the API supports Docker and host-level `rlimit` backends. Default `auto` uses Docker only and fails closed when Docker is unavailable. Explicit `rlimit` does not isolate filesystem or network access and is only for controlled development. Public judging requires a Docker-capable isolated worker or equivalent. See `api/DEPLOYMENT_CONTRACT.md`.
 
 ## Contributors
 
