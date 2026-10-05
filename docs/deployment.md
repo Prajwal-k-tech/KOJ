@@ -69,7 +69,7 @@ Obsolete: `SUPABASE_URL`, `SUPABASE_ANON_KEY` — not used; KOJ uses Clerk + Neo
 
 **Required env vars (all empty in `.env.example`):** `DATABASE_URL` (Neon pooled + `sslmode=require`), `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`, `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard`, `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/dashboard`, `FASTAPI_URL` (deployed FastAPI origin), `JUDGE_INTERNAL_SECRET` (must match on Next.js + FastAPI), `FRONTEND_URL` (Vercel URL for FastAPI CORS).
 
-**FastAPI separately:** Host the judge on a Linux VM or managed service with a Docker daemon and cgroups available. The judge runs submissions in Docker and fails closed when Docker is unavailable; the current image cannot run judging on a standard Cloud Run service without a separate Docker-capable execution design. Copy `api/.env.example` keys to the service environment (`DATABASE_URL`, `FASTAPI_HOST=0.0.0.0`, `JUDGE_INTERNAL_SECRET`, `FRONTEND_URL`) and pre-pull the configured runner images. Set `FRONTEND_URL=https://<vercel-app>.vercel.app` and ensure `JUDGE_INTERNAL_SECRET` is identical on both sides.
+**FastAPI separately:** The intended isolated setup is a Linux worker with Docker and cgroups. Set `JUDGE_SANDBOX_MODE=docker`, copy the required `api/.env.example` values (`DATABASE_URL`, `FASTAPI_HOST=0.0.0.0`, `JUDGE_INTERNAL_SECRET`, `FRONTEND_URL`) and pre-pull the configured images. Standard Cloud Run cannot run this Docker-per-case worker directly. `auto` falls back to host-level `rlimit` without Docker; that mode has no filesystem or network namespace and must not serve untrusted public submissions. Verify `/health` and the actual deployment before enabling submissions. See `api/DEPLOYMENT_CONTRACT.md`.
 
 **Clerk:** In Clerk dashboard, set Sign-in/Sign-up URLs and fallback redirects to the same values. Mirror all `NEXT_PUBLIC_CLERK_*` vars in Vercel Project Settings → Environment Variables. Organizations are **enabled** — `org:admin` role is used for admin APIs.
 
@@ -83,7 +83,7 @@ Obsolete: `SUPABASE_URL`, `SUPABASE_ANON_KEY` — not used; KOJ uses Clerk + Neo
 
 Preserved Vercel section above is accurate for intended production. Limitations today:
 
-1. **FastAPI requires a Docker-capable host** — deploy the service with `JUDGE_INTERNAL_SECRET` + `FRONTEND_URL`, Docker runner images, and a Linux host with resource-control support; otherwise the judge fails closed with a runtime error
+1. **Public judging requires an isolated worker** — standard Cloud Run cannot run the Docker-per-case worker. The `auto` fallback is host-level `rlimit`, not a sandbox for untrusted code; keep public submissions disabled until an isolated worker is deployed and verified.
 2. **Redis/SSE not deployed** — no Redis instance, no SSE route; leaderboard is on-demand
 3. **Contest CRUD not deployed** — no API to create contests in production; contests come from seed script
 4. **Webhook sync not deployed** — Clerk webhooks for `users`/`org memberships` not wired; `users` rows are lazy-created on first submission/admin call

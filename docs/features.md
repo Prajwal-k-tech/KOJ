@@ -24,14 +24,14 @@
 - **Contest creation / editing / publishing:** [Implemented on `feat/srs-high-priority`] admin-only `POST/GET /api/admin/contests`, `PATCH/DELETE /api/admin/contests/[id]` (publish/unpublish/end/archive transitions), add/remove problems via `/api/admin/contests/[id]/problems`, contest manager UI in `/admin`. Past-due `live` contests auto-flip to `ended` (lazy settle on contest reads/writes) and linked problems publish to the archive.
 
 ### Code Submission & Judging — [Implemented: Python, C, C++, Java, Go, Rust, JavaScript]
-- **Submission UI:** `app/problems/[id]/page.tsx` and `app/contests/[id]/arena/page.tsx` — language selector (python/c/c++/java/go/rust/javascript), CodeMirror, Run (samples) vs Submit (all cases). All seven languages are verified live against production (AC + TLE each).
+- **Submission UI:** `app/problems/[id]/page.tsx` and `app/contests/[id]/arena/page.tsx` — language selector (python/c/c++/java/go/rust/javascript), CodeMirror, Run (samples) vs Submit (all cases). Runtime coverage depends on the configured judge backend; see the security boundary below before enabling untrusted submissions.
 - **Codeforces Interactive Workspace:**
   - **Custom Test Runner (`POST /api/judge/run`):** Non-persisted real-time interactive testing with arbitrary user-supplied `stdin` and optional expected output diffing. Execution time, memory, stdout, and stderr displayed immediately.
   - **Sample Cases Runner:** Multi-tab sample testing with per-case pass/fail badges, expected vs actual stdout diffs, and execution metrics.
   - **In-Workspace Submissions Drawer:** Tab showing recent submissions on the problem with real-time SSE verdict streaming.
   - **Fast I/O Starter Templates:** Preloaded CP templates for C++ (`bits/stdc++.h` + fast I/O), Python 3.11, Java, and C with one-click reset and copy buttons.
 - **Submission flow:** `POST /api/submissions` validates auth/ids/code/mode → inserts `pending→running` → calls FastAPI `POST /judge` → persists verdict to Neon → returns result (see `docs/status.md` pipeline)
-- **Judge module:** `api/app/judge.py` — two backends selected by `JUDGE_SANDBOX_MODE` (`docker` = container sandbox; `rlimit` = host toolchain, the isolation level SRS §2.5 sanctions and what production/Cloud Run runs). Per-language prepare (py_compile / gcc / g++ / javac / `go build` / `rustc` / node), isolated temp workdir per submission, `RLIMIT_CPU/AS/NPROC/FSIZE` + wall timeout `time_limit_ms+2s`, whitespace-normalized comparison, verdicts `AC/WA/TLE/MLE/RE/CE/PE`. `RLIMIT_AS` does not describe the JVM/Go/Node, so those are bounded by `-Xmx`/`GOMEMLIMIT`/`--max-old-space-size`; `/health` reports the active backend as `sandbox`.
+- **Judge module:** `api/app/judge.py` — `docker` runs each case in a constrained container; `rlimit` runs on the host with process limits but no filesystem or network namespace. `auto` falls back to `rlimit` when Docker is absent. Do not expose `rlimit` to untrusted public submissions. Per-language compilation/execution and verdict mapping are implemented; `/health` reports the active backend as `sandbox`. See `api/DEPLOYMENT_CONTRACT.md` before deployment.
 - **Verdict types:** `accepted`, `wrong_answer`, `time_limit_exceeded`, `memory_limit_exceeded`, `runtime_error`, `compilation_error` — mapped to `submission_status`
 - **Multiple submissions:** all stored; `GET /api/submissions?problemId=&contestId=` lists caller's history
 
@@ -86,9 +86,9 @@
 ## Explicitly out of scope
 
 ### 1. Production-Grade Code Sandboxing
-- **What we don't do:** Docker-per-submission, gVisor/Firecracker microvms, seccomp, chroot
-- **What we do:** `resource.setrlimit(RLIMIT_AS)` on POSIX + wall timeout + `py_compile` check; `RLIMIT_AS` skipped on Windows dev
-- **Why:** Trusted college user base; process-level isolation sufficient for Sprint 1
+- **Required for untrusted public submissions:** isolated execution on a Docker-capable worker or equivalent, with filesystem/network restrictions and resource limits.
+- **Host-level `rlimit` mode:** available for controlled development; it limits some process resources but does not isolate filesystem or network access.
+- **Current limitation:** do not describe `rlimit` as a secure sandbox or enable it for untrusted public submissions. Standard Cloud Run cannot run the Docker-per-case worker directly.
 
 ### 2. Plagiarism Detection at Scale
 - **What we don't do:** AST/mosaic/ML models

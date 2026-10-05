@@ -77,7 +77,22 @@ Then open:
   (explicit methods/headers, no credentials, never `*`, no self-origin).
 - Never commit `api/.env`; only `.env.example` is tracked.
 
-## Judge sandbox (Docker-only, fail-closed)
+## Judge execution modes and security boundary
+
+`JUDGE_SANDBOX_MODE=docker` uses the per-case container configuration below
+and fails closed when Docker or a required security control is unavailable.
+The default `auto` mode selects Docker when the Docker CLI is present, but
+falls back to host-level `rlimit` otherwise. `rlimit` applies process limits;
+it does **not** provide filesystem or network isolation. Do not use `auto`
+or `rlimit` to run untrusted public submissions on a host with secrets or
+valuable access. In particular, a serverless host without Docker must not
+be treated as a secure judge merely because resource limits are enabled.
+
+Use `JUDGE_SANDBOX_MODE=docker` on a provisioned Docker-capable Linux worker,
+or route execution to an equivalent isolated worker. Full host requirements
+and limitations are in `api/DEPLOYMENT_CONTRACT.md`.
+
+### Docker sandbox
 
 Compilation and execution both run in per-case `docker run` containers
 with fixed flags: `--network none`, `--read-only`, non-root
@@ -112,7 +127,7 @@ The Docker host must have the daemon running, the seccomp profile
 provisioned, and all three images pre-pulled (`docker pull
 python:3.11-slim gcc:13-bookworm eclipse-temurin:17-jdk-jammy`, or
 your configured overrides). Without Docker, every judgment returns an
-infra-flagged error ("judge sandbox unavailable") — including on
-Cloud Run, which cannot run a Docker daemon. Production judging needs
-a VM/GCE host with Docker (or an equivalent container-isolated
-runner), not Cloud Run.
+infra-flagged error (`judge sandbox unavailable`) only when
+`JUDGE_SANDBOX_MODE=docker`. With `auto`, a missing Docker daemon selects
+`rlimit`; that fallback is not a security sandbox. Standard Cloud Run cannot
+run the Docker-per-case design directly.

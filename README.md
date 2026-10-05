@@ -113,11 +113,11 @@ Then <http://127.0.0.1:8000/health> and <http://127.0.0.1:8000/docs>.
 - Tailwind v4 has no `tailwind.config.js`; theming lives in `app/globals.css` under `@theme inline { ... }`.
 - The FastAPI service is intentionally separate from Next.js. Run it as a second process.
 
-## Production deployment
+## Deployment status
 
-- **Frontend**: Vercel (Next.js 16). See `docs/deployment.md` § 2.
-- **Judge**: Google Cloud Run (`api/Dockerfile` — Python 3.11-slim + gcc/g++/JDK). See `docs/deployment.md` § 3.
-- **Database**: Neon Postgres with Drizzle ORM. See `docs/deployment.md` § 1.
+- **Frontend**: Vercel (Next.js 16). See `docs/deployment.md`.
+- **Database**: Neon Postgres with Drizzle ORM.
+- **Judge**: the API supports Docker and host-level `rlimit` backends. `auto` falls back to `rlimit` when Docker is unavailable; `rlimit` does not isolate filesystem or network access. Do not expose it to untrusted public submissions. Public judging requires a Docker-capable isolated worker or equivalent. See `api/DEPLOYMENT_CONTRACT.md`.
 
 ## Contributors
 

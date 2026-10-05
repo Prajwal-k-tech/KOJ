@@ -3,9 +3,15 @@
 Scope: the FastAPI judge service in `api/` plus migration
 `0003_judge_hardening.sql`. Parent (Next.js `app/`, contests, UX)
 owns dispatch wiring, recovery, and verdict display — open items are
-listed at the bottom. A host that cannot run containers must run the
-rlimit backend instead (see §1a); the judge never silently executes
-unsandboxed.
+listed at the bottom. `rlimit` is a compatibility mode with process limits,
+not a security boundary for untrusted submissions. A host that cannot run
+containers must not accept public submissions unless execution is delegated
+to an equivalent isolated worker.
+
+> **Deployment gate:** `auto` falls back to host-level `rlimit` when Docker
+> is absent. Do not treat that fallback as safe for untrusted code. Verify
+> the actual backend from `/health` and keep public judging disabled until a
+> Docker-capable isolated worker (or equivalent) is provisioned and verified.
 
 ## 1. Host
 
@@ -17,8 +23,9 @@ unsandboxed.
   Docker socket or TCP daemon** (see §3). A serverless host (Cloud Run,
   no Docker daemon, no `--privileged`, no sibling containers) cannot
   satisfy §1 — use a VM (GCE e2-medium or larger), GCE
-  Container-Optimized OS, or equivalent, **or** run the rlimit backend
-  described in §1a.
+  Container-Optimized OS, or equivalent. Standard Cloud Run cannot satisfy
+  the Docker-per-case requirements; use a separate isolated worker for code
+  execution.
 
 ## 1a. Sandbox backend selection (`JUDGE_SANDBOX_MODE`)
 
@@ -30,8 +37,10 @@ unsandboxed.
 | `rlimit` | Host toolchain with `RLIMIT_CPU/AS/NPROC/FSIZE`, wall-clock timeout, and a fresh process session per run. This is the isolation level SRS §2.5 constraint 3 sanctions. No filesystem or network namespace. |
 | `auto` (code default) | `docker` when the Docker CLI exists, otherwise `rlimit`. |
 
-**Production currently runs `auto` on Cloud Run, i.e. `rlimit`.** `GET /health` reports
-the active backend as `sandbox`; alert on it. rlimit-specific properties you must not
+`GET /health` reports the active backend as `sandbox`; check it after every
+deployment and alert if it differs from the configured backend. The deployed
+backend and host must be verified directly; do not infer them from `auto` or
+from this document. rlimit-specific properties you must not
 forget when changing judge code:
 
 - `RLIMIT_NPROC` counts every task of the real UID (threads included). It must be derived
@@ -231,12 +240,14 @@ forget when changing judge code:
 
 - No Docker-capable Linux host was available in this environment; the
   Docker-mode matrix above is unrunnable here and must run before contest
-  use. The rlimit backend (production) **is** verified per language — see
-  `E2E-VERIFICATION.md` in the handoff pack.
+  use. The rlimit backend has been exercised per language in the recorded
+  environment; that does not establish safe isolation or verify the current
+  deployed backend.
 - rlimit mode provides no filesystem or network namespace: contestant code
-  sees the service user's filesystem and can reach the network. Accepted
-  under SRS §2.5 constraint 3 for a trusted user base; the Docker backend is
-  the hardened path.
+  runs as the service UID, can access files available to that user and can
+  reach the network. Do not use it for untrusted public submissions. The
+  Docker backend is the intended isolated path, subject to its host and
+  configuration requirements.
 - rlimit memory accounting is `RLIMIT_AS` for C/C++/Python and a runtime flag
   for Java/Go/Node, so a container-level (cgroup) memory kill does not apply.
   Go/Node programs that exceed the limit are more likely to be reported as a
