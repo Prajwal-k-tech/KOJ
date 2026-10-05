@@ -8,9 +8,10 @@ not a security boundary for untrusted submissions. A host that cannot run
 containers must not accept public submissions unless execution is delegated
 to an equivalent isolated worker.
 
-> **Deployment gate:** `auto` falls back to host-level `rlimit` when Docker
-> is absent. Do not treat that fallback as safe for untrusted code. Verify
-> the actual backend from `/health` and keep public judging disabled until a
+> **Deployment gate:** `auto` uses Docker and fails closed when Docker is
+> unavailable. The explicit `rlimit` mode runs code on the host without
+> filesystem or network namespaces and is only for controlled development.
+> Verify the backend from `/health` and keep public judging disabled until a
 > Docker-capable isolated worker (or equivalent) is provisioned and verified.
 
 ## 1. Host
@@ -33,9 +34,9 @@ to an equivalent isolated worker.
 
 | Mode | Behaviour |
 |---|---|
-| `docker` (default when a Docker CLI is present) | Everything in this document. Isolation via container namespaces, seccomp, cgroups. |
-| `rlimit` | Host toolchain with `RLIMIT_CPU/AS/NPROC/FSIZE`, wall-clock timeout, and a fresh process session per run. This is the isolation level SRS §2.5 constraint 3 sanctions. No filesystem or network namespace. |
-| `auto` (code default) | `docker` when the Docker CLI exists, otherwise `rlimit`. |
+| `docker` | Everything in this document. Isolation via container namespaces, seccomp, cgroups. |
+| `rlimit` | Host toolchain with `RLIMIT_CPU/AS/NPROC/FSIZE`, wall-clock timeout, and a fresh process session per run. No filesystem or network namespace; controlled development only. |
+| `auto` (code default) | Docker only. Fails closed if Docker is unavailable. |
 
 `GET /health` reports the active backend as `sandbox`; check it after every
 deployment and alert if it differs from the configured backend. The deployed

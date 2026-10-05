@@ -22,7 +22,22 @@ from app.judge import (
     _truncate,
     _visible_case,
     _whitespace_only_diff,
+    resolve_sandbox_backend,
+    settings,
 )
+
+
+class TestSandboxBackendSelection:
+    def test_auto_uses_docker_when_cli_is_missing(self, monkeypatch):
+        monkeypatch.setattr(settings, "JUDGE_SANDBOX_MODE", "auto")
+        monkeypatch.setattr("app.judge.shutil.which", lambda _name: None)
+
+        assert resolve_sandbox_backend() == "docker"
+
+    def test_rlimit_requires_explicit_mode(self, monkeypatch):
+        monkeypatch.setattr(settings, "JUDGE_SANDBOX_MODE", "rlimit")
+
+        assert resolve_sandbox_backend() == "rlimit"
 
 
 # ---------------------------------------------------------------------------

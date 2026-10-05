@@ -31,7 +31,7 @@
   - **In-Workspace Submissions Drawer:** Tab showing recent submissions on the problem with real-time SSE verdict streaming.
   - **Fast I/O Starter Templates:** Preloaded CP templates for C++ (`bits/stdc++.h` + fast I/O), Python 3.11, Java, and C with one-click reset and copy buttons.
 - **Submission flow:** `POST /api/submissions` validates auth/ids/code/mode → inserts `pending→running` → calls FastAPI `POST /judge` → persists verdict to Neon → returns result (see `docs/status.md` pipeline)
-- **Judge module:** `api/app/judge.py` — `docker` runs each case in a constrained container; `rlimit` runs on the host with process limits but no filesystem or network namespace. `auto` falls back to `rlimit` when Docker is absent. Do not expose `rlimit` to untrusted public submissions. Per-language compilation/execution and verdict mapping are implemented; `/health` reports the active backend as `sandbox`. See `api/DEPLOYMENT_CONTRACT.md` before deployment.
+- **Judge module:** `api/app/judge.py` — `docker` runs each case in a constrained container; `rlimit` runs on the host with process limits but no filesystem or network namespace and is for controlled development only. `auto` uses Docker and fails closed when Docker is absent. Per-language compilation/execution and verdict mapping are implemented; `/health` reports the active backend as `sandbox`. See `api/DEPLOYMENT_CONTRACT.md` before deployment.
 - **Verdict types:** `accepted`, `wrong_answer`, `time_limit_exceeded`, `memory_limit_exceeded`, `runtime_error`, `compilation_error` — mapped to `submission_status`
 - **Multiple submissions:** all stored; `GET /api/submissions?problemId=&contestId=` lists caller's history
 

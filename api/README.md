@@ -81,12 +81,11 @@ Then open:
 
 `JUDGE_SANDBOX_MODE=docker` uses the per-case container configuration below
 and fails closed when Docker or a required security control is unavailable.
-The default `auto` mode selects Docker when the Docker CLI is present, but
-falls back to host-level `rlimit` otherwise. `rlimit` applies process limits;
-it does **not** provide filesystem or network isolation. Do not use `auto`
-or `rlimit` to run untrusted public submissions on a host with secrets or
-valuable access. In particular, a serverless host without Docker must not
-be treated as a secure judge merely because resource limits are enabled.
+The default `auto` mode uses Docker and fails closed if Docker is unavailable.
+The explicit `rlimit` mode applies process limits but does **not** provide
+filesystem or network isolation; use it only for controlled development.
+Do not run untrusted public submissions through `rlimit` or on a host without
+the required isolation.
 
 Use `JUDGE_SANDBOX_MODE=docker` on a provisioned Docker-capable Linux worker,
 or route execution to an equivalent isolated worker. Full host requirements
