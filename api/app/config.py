@@ -115,7 +115,7 @@ class Settings(BaseSettings):
             "Sandbox backend. 'docker' = container backend only (fails closed without "
             "a Docker daemon, see api/DEPLOYMENT_CONTRACT.md). 'rlimit' = host-toolchain "
             "backend with resource.setrlimit CPU/AS/NPROC/FSIZE limits (SRS §2.5 constraint 3). "
-            "'auto' = Docker when the CLI is present, else rlimit (Cloud Run)."
+            "'auto' = Docker only; it fails closed when Docker is unavailable."
         ),
     )
 
