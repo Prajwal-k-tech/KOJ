@@ -124,3 +124,7 @@ Then <http://127.0.0.1:8000/health> and <http://127.0.0.1:8000/docs>.
 - Prajwal-k-tech
 - CyberSynthh
 - Pannem Chandra Teja
+
+## Recovery
+
+See [RECOVERY.md](RECOVERY.md) for rebuilding an offloaded checkout and restoring its dependencies/data.
