@@ -9,9 +9,9 @@ Two backends, selected by JUDGE_SANDBOX_MODE (see api/DEPLOYMENT_CONTRACT.md):
   so callers never blame the contestant.
 * `rlimit` — host-toolchain sandbox using `resource.setrlimit` CPU/AS/NPROC/
   FSIZE caps, a wall-clock timeout, and a fresh process session per run. This
-  is the isolation level the SRS sanctions (§2.5 constraint 3) and the only
-  backend available on serverless hosts, which cannot run containers.
-* `auto` (default) — docker when the CLI is present, otherwise rlimit.
+  is a compatibility mode for controlled development, not a boundary for
+  untrusted public submissions.
+* `auto` (default) — Docker only; judging fails closed when Docker is missing.
 
 Sandbox (fixed server-side flags, never user-controlled):
 network none, read-only root, non-root user, cap-drop ALL,
@@ -459,10 +459,9 @@ def _run_docker(
 # ---------------------------------------------------------------------------
 # rlimit backend (host toolchain)
 #
-# SRS §2.5 constraint 3: process-level isolation via resource.setrlimit instead
-# of containers, sufficient for a trusted college user base. Used when
-# JUDGE_SANDBOX_MODE=auto and no Docker CLI is present (Cloud Run cannot run
-# containers) or when forced with JUDGE_SANDBOX_MODE=rlimit.
+# Process-level isolation via resource.setrlimit instead of containers.
+# Use only for controlled development; select it explicitly with
+# JUDGE_SANDBOX_MODE=rlimit. It is not safe for untrusted public submissions.
 #
 # Enforced per run: RLIMIT_CPU (soft = wall budget, hard = soft + 1s so a CPU
 # hog receives SIGXCPU and reports as TLE instead of a generic exit), RLIMIT_AS,
@@ -512,7 +511,7 @@ def resolve_sandbox_backend() -> str:
         return "docker"
     if mode == "rlimit":
         return "rlimit"
-    return "docker" if shutil.which("docker") else "rlimit"
+    return "docker"
 
 
 def _host_task_count() -> int:
